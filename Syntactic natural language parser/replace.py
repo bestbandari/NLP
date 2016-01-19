@@ -2,12 +2,12 @@ import sys,json
 
 #generate rare list
 def list_rare(file_rule, file_rare):
-    fi = open(file_rule, 'r');
-    fo = open(file_rare, 'w');
+    fi = open(file_rule, 'r')
+    fo = open(file_rare, 'w')
 
-#write the lines that involve rare to the output file
+    #write the lines that involve rare to the output file
     for line in fi:
-        token = line.split();
+        token = line.split()
         if  token [1] == 'UNARYRULE' and token[3] == '_rare_':
             fo.write(line)
     
@@ -36,7 +36,7 @@ def count_rare(file):
     
     # list the infrequent words
     for word in count:
-        if  count[word] < 5:
+        if  count[word] < 3:
             rare.append(word)
     
     f.close()
@@ -56,7 +56,7 @@ def replace_tree(tree, rare):
     
 if __name__=='__main__':
     if len(sys.argv) != 3:
-        print('error input')
+        print 'error input'
         sys.exit(1)
     
     f_tree = sys.argv[1]
@@ -71,7 +71,7 @@ if __name__=='__main__':
         tree = json.loads(line)
         replace_tree(tree,rare)
         new_tree = json.dumps(tree)
-        print(new_tree)
+        print new_tree
     fi.close()
     
     

@@ -1,18 +1,5 @@
 import sys,json
 
-#generate the vovabulary of frequency higher or equal to 5
-def vocabulary(file):
-    f = open(file, 'r')
-    v = set()
-    
-    for line in f:
-        token = line.split()
-        if  token[1] == 'UNARYRULE' and int(token[0]) >=5 :
-            v.add(token[3])
-    
-    f.close()
-    return v
-
 # add a value to binary rule. The varible is a 3-layer dictionary structure
 def add_binary(count_yz_x, x, y, z, num):
     #if the key does not exist, create a one.
@@ -37,43 +24,51 @@ def add_unary(count_y_x, x, y, num):
 def add_nonterm(count_x, x, num):
     count_x[x] = int(num)
 
-# generate the parameters to CKY algorithm. Use multilayer dictionary to store these parameters.
+# generate the model to CKY algorithm. Use multilayer dictionary to store these model.
 def train(file):
-    f = open(file, 'r')
-    
-    # count of nonterminals
-    count_x = {}
-    # count of unary rule that x->y
-    count_y_x = {}
-    # count of binary rule that x->yz
-    count_yz_x = {}
-    
-    # init count
-    for line in f:
-        token = line.split()
-        if  token[1] == 'NONTERMINAL':
-            add_nonterm(count_x, token[2], token[0])
+    try:
+        f = open(file, 'r')
         
-        if  token[1] == 'UNARYRULE':
-            add_unary(count_y_x, token[2], token[3], token[0])
+        # vocabulary
+        voc = set()
+        # count of nonterminals
+        count_x = {}
+        # count of unary rule that x->y
+        count_y_x = {}
+        # count of binary rule that x->yz
+        count_yz_x = {}
         
-        if  token[1] == 'BINARYRULE':
-            add_binary(count_yz_x, token[2], token[3], token[4], token[0])
+        # init count
+        for line in f:
+            token = line.split()
+            if  token[1] == 'NONTERMINAL':
+                add_nonterm(count_x, token[2], token[0])
+            
+            if  token[1] == 'UNARYRULE':
+                add_unary(count_y_x, token[2], token[3], token[0])
+                if int(token[0]) >= 3:
+                    voc.add(token[3])
+            
+            if  token[1] == 'BINARYRULE':
+                add_binary(count_yz_x, token[2], token[3], token[4], token[0])
+        
+        # generate probabilities for x->y
+        for y in count_y_x:
+            for x in count_y_x[y]:
+                count_y_x[y][x] = count_y_x[y][x] / float(count_x[x])
+        
+        # generate probabilities for x->yz    
+        for y in count_yz_x:
+            for z in count_yz_x[y]:
+                for x in count_yz_x[y][z]:
+                    count_yz_x[y][z][x] = count_yz_x[y][z][x] / float(count_x[x])
+                    
+        
+        f.close()
+        return voc, count_y_x, count_yz_x
     
-    # generate probabilities for x->y
-    for y in count_y_x:
-        for x in count_y_x[y]:
-            count_y_x[y][x] = count_y_x[y][x] / count_x[x]
-    
-    # generate probabilities for x->yz    
-    for y in count_yz_x:
-        for z in count_yz_x[y]:
-            for x in count_yz_x[y][z]:
-                count_yz_x[y][z][x] = count_yz_x[y][z][x] / count_x[x]
-                
-    
-    f.close()
-    return count_y_x, count_yz_x
+    except IOError:
+        print 'Could not open file: ' + file
 
 # add values to CKY varibles, including pi and backpoint
 def add_CKY(pi, bp, i, j, x, value, s, y, z):
@@ -146,20 +141,25 @@ def recover(bp, i, j, x):
     return [x, recover(bp, i, bp[i][j][x][0], bp[i][j][x][1]), recover(bp, bp[i][j][x][0] + 1, j, bp[i][j][x][2])]
     
 
-# parse the file line by line
-def parse(file_dev, file_count, file_out):
-    fi = open(file_dev, 'r')
-    fo = open(file_out, 'w')
+# parse a sentence
+def parse(sentence, q_x, q_y_x, q_yz_x):
+    words = sentence.split()
+    q, bp = CKY(words, q_x, q_y_x, q_yz_x)
+    tree = recover(bp, 0, len(words) - 1, 'SBARQ')
+    return json.dumps(tree)
+     
+# parse a file line by line
+def parse_file(file_dev, file_count, file_out):
+    try:
+        fi = open(file_dev, 'r')
+        fo = open(file_out, 'w')
+        voc, q_y_x, q_yz_x = train(file_count)
+        
+        for line in fi:
+            fo.write( parse(line, voc, q_y_x, q_yz_x) + '\n' )
+        
+        fi.close()
+        fo.close()        
+    except IOError:
+        print 'Could not open file!'
     
-    voc = vocabulary(file_count)
-    q_y_x, q_yz_x = train(file_count)
-    
-    for line in fi:
-        words = line.split()
-        q, bp = CKY(words, voc, q_y_x, q_yz_x)
-        tree = recover(bp, 0, len(words) - 1, 'SBARQ')
-        js_tree = json.dumps(tree)
-        fo.write(js_tree + '\n')
-    
-    fi.close()
-    fo.close()

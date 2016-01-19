@@ -17,13 +17,13 @@ class Counts:
 
   def show(self):
     for symbol, count in self.nonterm.items():
-      print(count, "NONTERMINAL", symbol)
+      print count, "NONTERMINAL", symbol
 
     for (sym, word), count in self.unary.items():
-      print(count, "UNARYRULE", sym, word)
+      print count, "UNARYRULE", sym, word 
 
     for (sym, y1, y2), count in self.binary.items():
-      print(count, "BINARYRULE", sym, y1, y2)
+      print count, "BINARYRULE", sym, y1, y2 
 
   def count(self, tree):
     """
